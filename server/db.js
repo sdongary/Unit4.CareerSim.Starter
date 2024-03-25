@@ -24,12 +24,12 @@ const createTables = async()=> {
     id UUID DEFAULT gen_random_uuid(),
     name VARCHAR(20) UNIQUE NOT NULL,
     inventory INTEGER DEAFULT 0,
-    price INTEGER DEFAULT 0,
+    price NUMERIC NOT NULL,
     description VARCHAR(255),
     PRIMARY KEY (id)
   );
   CREATE TABLE carted_products(
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
+    id UUID DEFAULT gen_random_uuid(), 
     user_id UUID REFERENCES users(id) NOT NULL,
     product_id UUID REFERENCES products(id) NOT NULL,
     quantity INTEGER DEFAULT 0,
@@ -48,19 +48,19 @@ const createUser = async({ email, password, address, payment_info, is_admin })=>
   return response.rows[0];
 };
 
-const createCartedProducts = async({ cart_id, user_id, quantity })=> {
-  const SQL = `
-    INSERT INTO products(cart_id, product_id, quantity) VALUES($1, $2) RETURNING *
-  `;
-  const response = await client.query(SQL, cart_id, user_id,quantity);
-  return response.rows[0];
-};
-
 const createProduct = async({ name, price, description, inventory })=> {
   const SQL = `
     INSERT INTO products(id, name, price, description, inventory) VALUES($1, $2, $3, $4, $5) RETURNING *
   `;
   const response = await client.query(SQL, [uuid.v4(),  name, price, description, inventory]);
+  return response.rows[0];
+};
+
+const createCartedProducts = async({ cart_id, user_id, quantity })=> {
+  const SQL = `
+    INSERT INTO products(cart_id, product_id, quantity) VALUES($1, $2) RETURNING *
+  `;
+  const response = await client.query(SQL, cart_id, user_id,quantity);
   return response.rows[0];
 };
 
@@ -80,7 +80,7 @@ const fetchProducts = async() => {
   return response.rows;
 }
 
-const fetchCartedProducts = async() => {
+const fetchCartedProducts = async({ user_id }) => {
   const SQL = `
   SELECT * FROM carted_products WHERE user_id = $1;
   `;
@@ -95,7 +95,7 @@ const updateUser = async({ email, password, address, payment_info, is_admin }) =
   WHERE id=$6
   RETURNING *
   `
-  const result = await client.query(SQL, [email, password, address, payment_info, is_admin]);
+  const response = await client.query(SQL, [email, password, address, payment_info, is_admin]);
   return response.rows[0];
 }
 
@@ -106,7 +106,7 @@ const updateProduct = async({ name, price, description, inventory, id}) => {
   WHERE id=$5
   RETURNING *
   `;
-  const result = await client.query(SQL, [name, price, description, inventory, id]);
+  const response = await client.query(SQL, [name, price, description, inventory, id]);
   return response.rows[0];
 }
 
@@ -117,7 +117,7 @@ const updateCartedProducts = async({ user_id, product_id, quantity}) => {
   WHERE id=$4
   RETURNING *
   `;
-  const result = await client.query(SQL, [user_id, product_id, quantity]);
+  const response = await client.query(SQL, [user_id, product_id, quantity]);
   return response.rows[0];
 }
 
@@ -169,7 +169,7 @@ const findUserWithToken = async(token)=> {
     throw error;
   }
   const SQL = `
-    SELECT id, username FROM users WHERE id=$1;
+    SELECT id, email, is_admin FROM users WHERE id=$1;
   `;
   const response = await client.query(SQL, [id]);
   if(!response.rows.length){
@@ -197,5 +197,4 @@ module.exports = {
   fetchProducts,
   fetchUsers,
   fetchCartedProducts,
-  checkIsAdmin
 };
